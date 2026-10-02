@@ -1,0 +1,134 @@
+analysis_report: false
+api_url: http://127.0.0.1:8000/v1
+chat_template: null
+dataset_args:
+  general_qa:
+    aggregation: mean
+    data_statistics: null
+    dataset_id: benchmark/custom_eval/text/qa
+    default_subset: default
+    description: '
+
+      ## Overview
+
+
+      General-QA is a customizable question answering benchmark for evaluating language
+      models on open-ended text generation tasks. It supports flexible data formats
+      and configurable evaluation metrics.
+
+
+      ## Task Description
+
+
+      - **Task Type**: Open-Ended Question Answering
+
+      - **Input**: Question (with optional system prompt and conversation history)
+
+      - **Output**: Free-form text answer
+
+      - **Flexibility**: Supports custom datasets via local files
+
+
+      ## Key Features
+
+
+      - Flexible input format (query/answer or messages format)
+
+      - Optional system prompt support
+
+      - BLEU and Rouge evaluation metrics
+
+      - Custom dataset support via local file loading
+
+      - Extensible for various QA use cases
+
+
+      ## Evaluation Notes
+
+
+      - Default configuration uses **0-shot** evaluation
+
+      - Default metrics: **BLEU**, **Rouge** (Rouge-L-R as main score)
+
+      - Evaluates on **test** split
+
+      - See [User Guide](https://evalscope.readthedocs.io/en/latest/advanced_guides/custom_dataset/llm.html#qa)
+      for dataset format
+
+      '
+    eval_split: test
+    extra_params: {}
+    few_shot_num: 0
+    few_shot_prompt_template: null
+    few_shot_random: false
+    filters: null
+    force_redownload: false
+    metric_list:
+    - BLEU
+    - Rouge
+    name: general_qa
+    output_types:
+    - generation
+    paper_url: null
+    pretty_name: General-QA
+    prompt_template: '{query}'
+    query_template: null
+    review_timeout: null
+    sample_example: null
+    sandbox_config: {}
+    shuffle: false
+    shuffle_choices: false
+    subset_list:
+    - keyword_extraction
+    system_prompt: null
+    tags:
+    - QA
+    - Custom
+    train_split: null
+dataset_dir: /home/m1881/.cache/modelscope/hub/datasets
+dataset_hub: modelscope
+datasets:
+- general_qa
+debug: false
+enable_progress_tracker: false
+eval_backend: Native
+eval_batch_size: 4
+eval_config: null
+eval_type: openai_api
+evalscope_version: 1.5.2.post1
+generation_config:
+  batch_size: 4
+  max_tokens: 256
+  temperature: 0.0
+ignore_errors: false
+judge_model_args:
+  api_url: https://api.deepseek.com
+  generation_config:
+    max_tokens: 1024
+    temperature: 0.0
+  model_id: deepseek-v4-pro
+  prompt_template: "你是一个中文关键词抽取评测裁判。不要输出分析过程。\n\n  请判断模型抽取的关键词的效果。最终输出一个分数。\n  最终只输出一个分数，格式必须为\
+    \ [[0到1之间的小数]]，例如 [[0.8]]\n\n示例：\n任务：\n抽取出文本中的关键词：\n标题：人工神经网络在猕猴桃种类识别上的应用\n文本：在猕猴桃介电特性研究的基础上,将人工神经网络技术应用于猕猴桃的种类识别.该种类识别属于模式识别,其关键在于提取样品的特征参数,在获得特征参数的基础上,选取合适的网络通过训练来进行识别.猕猴桃种类识别的研究为自动化识别果品的种类、品种和新鲜等级等提供了一种新方法,为进一步研究果品介电特性与其内在品质的关系提供了一定的理论与实践基础.\n\
+    模型输出：\n食品科学技术基础学科;猕猴桃;应用;人工神经网络;介电特性;识别\n你的最终输出：[[0.9]]\n\n\n评分标准：\n1、模型是否按照特定格式输出，权重：0.6\n\
+    2、所提取的内容，和原文的关联程度，权重：0.4\n最终将结果限制到0-1的范围当中\n\n  [题目]\n  {question}\n\n\n  [模型输出]\n\
+    \  {pred}\n\n  输出一个最终的0-1的分数"
+  score_pattern: \[\[(\d+(?:\.\d+)?)\]\]
+  score_type: numeric
+judge_strategy: llm
+judge_worker_num: 1
+limit: null
+model: Qwen3-0.6B
+model_args: {}
+model_id: Qwen3-0.6B
+model_task: text_generation
+no_timestamp: false
+repeats: 1
+rerun_review: false
+sandbox_manager_config: {}
+sandbox_type: docker
+seed: 42
+stream: null
+timeout: null
+use_cache: null
+use_sandbox: false
+work_dir: ./outputs/20260716_164407

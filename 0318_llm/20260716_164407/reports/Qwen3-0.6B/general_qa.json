@@ -1,0 +1,34 @@
+{
+    "name": "Qwen3-0.6B@general_qa",
+    "dataset_name": "general_qa",
+    "dataset_pretty_name": "General-QA",
+    "dataset_description": "\n## Overview\n\nGeneral-QA is a customizable question answering benchmark for evaluating language models on open-ended text generation tasks. It supports flexible data formats and configurable evaluation metrics.\n\n## Task Description\n\n- **Task Type**: Open-Ended Question Answering\n- **Input**: Question (with optional system prompt and conversation history)\n- **Output**: Free-form text answer\n- **Flexibility**: Supports custom datasets via local files\n\n## Key Features\n\n- Flexible input format (query/answer or messages format)\n- Optional system prompt support\n- BLEU and Rouge evaluation metrics\n- Custom dataset support via local file loading\n- Extensible for various QA use cases\n\n## Evaluation Notes\n\n- Default configuration uses **0-shot** evaluation\n- Default metrics: **BLEU**, **Rouge** (Rouge-L-R as main score)\n- Evaluates on **test** split\n- See [User Guide](https://evalscope.readthedocs.io/en/latest/advanced_guides/custom_dataset/llm.html#qa) for dataset format\n",
+    "model_name": "Qwen3-0.6B",
+    "score": 0.86,
+    "metrics": [
+        {
+            "name": "mean_acc",
+            "num": 10,
+            "score": 0.86,
+            "macro_score": 0.86,
+            "categories": [
+                {
+                    "name": [
+                        "default"
+                    ],
+                    "num": 10,
+                    "score": 0.86,
+                    "macro_score": 0.86,
+                    "subsets": [
+                        {
+                            "name": "keyword_extraction",
+                            "score": 0.86,
+                            "num": 10
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "analysis": "N/A"
+}

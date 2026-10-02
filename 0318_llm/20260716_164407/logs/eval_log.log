@@ -1,0 +1,130 @@
+2026-07-16 16:44:07 - evalscope - INFO: Running with native backend
+2026-07-16 16:44:07 - evalscope - INFO: Dump task config to ./outputs/20260716_164407/configs/task_config.yaml
+2026-07-16 16:44:07 - evalscope - INFO: {
+    "model": "Qwen3-0.6B",
+    "model_id": "Qwen3-0.6B",
+    "model_args": {},
+    "model_task": "text_generation",
+    "chat_template": null,
+    "datasets": [
+        "general_qa"
+    ],
+    "dataset_args": {
+        "general_qa": {
+            "name": "general_qa",
+            "dataset_id": "benchmark/custom_eval/text/qa",
+            "output_types": [
+                "generation"
+            ],
+            "subset_list": [
+                "keyword_extraction"
+            ],
+            "default_subset": "default",
+            "few_shot_num": 0,
+            "few_shot_random": false,
+            "train_split": null,
+            "eval_split": "test",
+            "prompt_template": "{query}",
+            "few_shot_prompt_template": null,
+            "system_prompt": null,
+            "query_template": null,
+            "pretty_name": "General-QA",
+            "description": "\n## Overview\n\nGeneral-QA is a customizable question answering benchmark for evaluating language models on open-ended text generation tasks. It supports flexible data formats and configurable evaluation metrics.\n\n## Task Description\n\n- **Task Type**: Open-Ended Question Answering\n- **Input**: Question (with optional system prompt and conversation history)\n- **Output**: Free-form text answer\n- **Flexibility**: Supports custom datasets via local files\n\n## Key Features\n\n- Flexible input format (query/answer or messages format)\n- Optional system prompt support\n- BLEU and Rouge evaluation metrics\n- Custom dataset support via local file loading\n- Extensible for various QA use cases\n\n## Evaluation Notes\n\n- Default configuration uses **0-shot** evaluation\n- Default metrics: **BLEU**, **Rouge** (Rouge-L-R as main score)\n- Evaluates on **test** split\n- See [User Guide](https://evalscope.readthedocs.io/en/latest/advanced_guides/custom_dataset/llm.html#qa) for dataset format\n",
+            "paper_url": null,
+            "data_statistics": null,
+            "sample_example": null,
+            "tags": [
+                "QA",
+                "Custom"
+            ],
+            "filters": null,
+            "metric_list": [
+                "BLEU",
+                "Rouge"
+            ],
+            "aggregation": "mean",
+            "shuffle": false,
+            "shuffle_choices": false,
+            "force_redownload": false,
+            "review_timeout": null,
+            "extra_params": {},
+            "sandbox_config": {}
+        }
+    },
+    "dataset_dir": "/home/m1881/.cache/modelscope/hub/datasets",
+    "dataset_hub": "modelscope",
+    "repeats": 1,
+    "generation_config": {
+        "batch_size": 4,
+        "max_tokens": 256,
+        "temperature": 0.0
+    },
+    "eval_type": "openai_api",
+    "eval_backend": "Native",
+    "eval_config": null,
+    "limit": null,
+    "eval_batch_size": 4,
+    "use_cache": null,
+    "rerun_review": false,
+    "work_dir": "./outputs/20260716_164407",
+    "no_timestamp": false,
+    "enable_progress_tracker": false,
+    "ignore_errors": false,
+    "debug": false,
+    "seed": 42,
+    "api_url": "http://127.0.0.1:8000/v1",
+    "timeout": null,
+    "stream": null,
+    "judge_strategy": "llm",
+    "judge_worker_num": 1,
+    "judge_model_args": {
+        "model_id": "deepseek-v4-pro",
+        "api_url": "https://api.deepseek.com",
+        "generation_config": {
+            "temperature": 0.0,
+            "max_tokens": 1024
+        },
+        "score_type": "numeric",
+        "score_pattern": "\\[\\[(\\d+(?:\\.\\d+)?)\\]\\]",
+        "prompt_template": "你是一个中文关键词抽取评测裁判。不要输出分析过程。\n\n  请判断模型抽取的关键词的效果。最终输出一个分数。\n  最终只输出一个分数，格式必须为 [[0到1之间的小数]]，例如 [[0.8]]\n\n示例：\n任务：\n抽取出文本中的关键词：\n标题：人工神经网络在猕猴桃种类识别上的应用\n文本：在猕猴桃介电特性研究的基础上,将人工神经网络技术应用于猕猴桃的种类识别.该种类识别属于模式识别,其关键在于提取样品的特征参数,在获得特征参数的基础上,选取合适的网络通过训练来进行识别.猕猴桃种类识别的研究为自动化识别果品的种类、品种和新鲜等级等提供了一种新方法,为进一步研究果品介电特性与其内在品质的关系提供了一定的理论与实践基础.\n模型输出：\n食品科学技术基础学科;猕猴桃;应用;人工神经网络;介电特性;识别\n你的最终输出：[[0.9]]\n\n\n评分标准：\n1、模型是否按照特定格式输出，权重：0.6\n2、所提取的内容，和原文的关联程度，权重：0.4\n最终将结果限制到0-1的范围当中\n\n  [题目]\n  {question}\n\n\n  [模型输出]\n  {pred}\n\n  输出一个最终的0-1的分数"
+    },
+    "analysis_report": false,
+    "use_sandbox": false,
+    "sandbox_type": "docker",
+    "sandbox_manager_config": {},
+    "evalscope_version": "1.5.2.post1"
+}
+2026-07-16 16:44:07 - evalscope - INFO: Start loading benchmark dataset: general_qa
+2026-07-16 16:44:07 - evalscope - INFO: Start evaluating 1 subsets of general_qa: ['keyword_extraction']
+2026-07-16 16:44:07 - evalscope - INFO: Unified pool: 10 items to process, 0 already fully cached (10 total across all subsets).
+2026-07-16 16:44:07 - evalscope - INFO: Loading model for prediction...
+2026-07-16 16:44:07 - evalscope - INFO: Creating model Qwen3-0.6B with eval_type=openai_api base_url=http://127.0.0.1:8000/v1, config={'retries': 5, 'retry_interval': 10, 'batch_size': 4, 'max_tokens': 256, 'temperature': 0.0}, model_args={}
+2026-07-16 16:44:07 - evalscope - INFO: Model loaded successfully.
+2026-07-16 16:44:08 - evalscope - INFO: Creating model deepseek-v4-pro with eval_type=openai_api base_url=https://api.deepseek.com, config={'retries': 5, 'retry_interval': 10, 'max_tokens': 1024, 'temperature': 0.0}, model_args={}
+2026-07-16 16:44:28 - evalscope - INFO: Evaluating[general_qa] 100%| 10/10 [Elapsed: 00:20 < Remaining: 00:00,  2.14s/it]
+2026-07-16 16:44:28 - evalscope - INFO: Unified pool finished for general_qa.
+2026-07-16 16:44:28 - evalscope - INFO: Aggregating scores for subset: keyword_extraction
+2026-07-16 16:44:28 - evalscope - INFO: Generating report...
+2026-07-16 16:44:28 - evalscope - INFO: 
+general_qa report table:
++------------+------------+----------+--------------------+-------+---------+---------+
+| Model      | Dataset    | Metric   | Subset             |   Num |   Score | Cat.0   |
++============+============+==========+====================+=======+=========+=========+
+| Qwen3-0.6B | general_qa | mean_acc | keyword_extraction |    10 |    0.86 | default |
++------------+------------+----------+--------------------+-------+---------+---------+ 
+
+2026-07-16 16:44:28 - evalscope - INFO: Skipping report analysis (`analysis_report=False`).
+2026-07-16 16:44:28 - evalscope - INFO: Dump report to: ./outputs/20260716_164407/reports/Qwen3-0.6B/general_qa.json 
+
+2026-07-16 16:44:28 - evalscope - INFO: Benchmark general_qa evaluation finished.
+2026-07-16 16:44:28 - evalscope - INFO: Running[eval] 100%| 1/1 [Elapsed: 00:20 < Remaining: 00:00, 20.31s/benchmark]
+2026-07-16 16:44:28 - evalscope - INFO: Overall report table: 
++------------+------------+----------+--------------------+-------+---------+---------+
+| Model      | Dataset    | Metric   | Subset             |   Num |   Score | Cat.0   |
++============+============+==========+====================+=======+=========+=========+
+| Qwen3-0.6B | general_qa | mean_acc | keyword_extraction |    10 |    0.86 | default |
++------------+------------+----------+--------------------+-------+---------+---------+ 
+
+2026-07-16 16:44:28 - evalscope - INFO: HTML report generated: /home/m1881/github_proj/eval_scope/outputs/20260716_164407/reports/report.html
+2026-07-16 16:44:28 - evalscope - INFO: Finished evaluation for Qwen3-0.6B on ['general_qa']
+2026-07-16 16:44:28 - evalscope - INFO: Output directory: ./outputs/20260716_164407
