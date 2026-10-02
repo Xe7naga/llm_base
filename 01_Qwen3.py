@@ -16,11 +16,11 @@ QWEN_CONFIG_06_B = {
     "num_hidden_layers": 28,                # Transformer Block层数
     "num_attention_heads": 16,              # Query注意力头数
     "num_key_value_heads": 8,               # Key/Value注意力头数，GQA会让多个Q头共享KV头
-    "head_dim": 128,                        # 每个注意力头的维度
+    "head_dim": 128,                        # 每个注意力头的维度 q,k,v的 长度
     "qk_norm": True,                        # 是否需要对Query和Key进行归一化
-    "rope_theta": 1_000_000.0,              # RoPE中的theta base
+    "rope_theta": 1_000_000.0,              # RoPE中的theta base 这里从1万调大到一百万是因为窗口变大了 为了使得保持长距离的语义捕捉能力 需要缩小频率即 增大theta
     "rms_norm_eps": 1e-6,                   # RMSNorm中的epsilon
-    "tie_word_embeddings": True,            # 输入embedding和输出lm head是否共享权重
+    "tie_word_embeddings": True,            # 输入embedding和输出lm head是否共享权重 小参数量的模型一般设置为共享权重
     "torch_dtype": torch.bfloat16,          # 低精度dtype，用于降低显存占用
 }
 
@@ -33,7 +33,7 @@ class Qwen3Model(nn.Module):
 
         # transformer block
         # nn.ModuleList：model.parameters()会自动注册其中子模块的参数
-        self.trf_blocks = nn.ModuleList(  
+        self.trf_blocks = nn.ModuleList(
             [TransformerBlock(cfg) for _ in range(cfg["num_hidden_layers"])]
         )
         self.final_norm = RMSNorm(cfg["hidden_size"], eps=cfg["rms_norm_eps"])
@@ -81,12 +81,12 @@ class Qwen3Model(nn.Module):
                 # 例如pos_start=20,pos_end=21时，只取第20个位置这一行，并允许它关注0到20号位置
             )[pos_start:pos_end, :pos_end]
         else: # prefill阶段
-            pos_start = 0  
+            pos_start = 0
             mask = torch.triu(
                 torch.ones(num_tokens, num_tokens, device=x.device, dtype=torch.bool), diagonal=1
             )
             self.current_pos=num_tokens
-        
+
         # 扩展mask到[1, 1, query_len, key_value_len]，方便广播到每个batch和每个head
         mask = mask.unsqueeze(0).unsqueeze(0)
 
@@ -185,6 +185,11 @@ class GroupedQueryAttention(nn.Module):
         # Qwen3-0.6B中：d_out = num_attention_heads * head_dim = 16 * 128 = 2048
         # 此时可以将2048维向量拆成16个Q头，每个Q头128维
         self.q_proj = nn.Linear(d_in, self.d_out, bias=False, dtype=dtype)
+
+        """
+        每个 Q 头都有自己的 \(W_Q\)。代码把这些小矩阵拼成一个大矩阵，放进同一个 nn.Linear，一次算出所有头的结果。
+        所以，一个 q_proj 模块里，可以包含 16 个头各自的投影参数
+        """
         # k_proj和v_proj的输出头数更少，d_in输入，num_kv_groups * head_dim输出
         # Qwen3-0.6B中：num_key_value_heads * head_dim = 8 * 128 = 1024
         # 这时可以将1024维向量拆成8个K头/V头，每个头128维
@@ -251,12 +256,19 @@ class GroupedQueryAttention(nn.Module):
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores / self.head_dim**0.5, dim=-1)
         # attn_weights: [batch_size, num_heads, query_len/num_tokens, query_len/num_tokens]
+
         # values: [batch_size, num_heads, query_len, head_dim]
+
         # (attn_weights @ values)结果：[batch_size, num_heads, query_len, head_dim]
+
         # context转置后shape: [batch_size, query_len, num_heads, head_dim]
+
         # reshape: 去掉num_heads: d_out: num_heads* head_dim
+
         context = (attn_weights @ values).transpose(1, 2).reshape(b, num_tokens, self.d_out)
+
         # o_proj降维：转换成(b, num_tokens, d_in(hidden_size))
+
         # o_proj： 1、将多个简单拼接的V向量，有机融合在一起， 2、将d_out的向量（num_heads * head_dim）转换回 hidden_size
         return self.o_proj(context), next_cache
 
@@ -281,7 +293,7 @@ def compute_rope_params(head_dim, theta_base=10_000, context_length=4096, dtype=
     exponents = freq_indices.float() / head_dim
 
     # 3. 计算 theta_base 的这些指数次幂
-    # 1000000 ^ (2i/d) 
+    # 1000000 ^ (2i/d)
     scales = theta_base ** exponents
 
     # 4. 取倒数，得到 inverse frequencies
@@ -313,8 +325,8 @@ def compute_rope_params(head_dim, theta_base=10_000, context_length=4096, dtype=
     # 由于是前半部分和后半部分对应索引位置处做旋转，所以此处将angels复制，从而使得旋转的一组二维分量，共享一个angles值
     # head_dim=8时，一行会变成：[angle_0, angle_1, angle_2, angle_3, angle_0, angle_1, angle_2, angle_3]
     angles = torch.cat([angles, angles], dim=1)  # Shape: (context_length, head_dim)
-    
-    
+
+
 
     # 预计算每个角度的余弦值和正弦值
     cos = torch.cos(angles) # 得到序列当中每个位置，每个分量的余弦值
@@ -363,7 +375,7 @@ def apply_rope(x, cos, sin, offset=0):
         也即：
             x_rotated = [first_half, second_half] * pos_cos + [-second_half, first_half] * pos_sin
         由于first_half和second_half，也都是向量，所以上面的式子，可以拆解成对应位置处的处理。
-                      
+
         现从first_half和second_half当中，取第0个索引位置处的值，x0和x4，计算最终结果：
             [x0*cos(a0) - x4 * sin(a0), x4*cos(a0) + x0*sin(a0)]，
         展开后就是：
@@ -372,7 +384,7 @@ def apply_rope(x, cos, sin, offset=0):
 
         等价于：
             [x0, x4] * 旋转矩阵
-        
+
         其他分量同理。
     """
     # x: (batch_size, num_heads, seq_len, head_dim)
@@ -504,7 +516,7 @@ class Qwen3Tokenizer:
         return s
 
 def generate_text(input_ids,model:Qwen3Model,tokenizer:Qwen3Tokenizer,max_len:int=100):
-    
+
     # 每次调用时，重置一下current_pos位置的值
     model.reset_kv_cache()
     # 整个自回归生成的过程当中，生成的token数量
@@ -513,14 +525,14 @@ def generate_text(input_ids,model:Qwen3Model,tokenizer:Qwen3Tokenizer,max_len:in
     final_output = input_ids.clone()
     # 存放kv cache的一个字典
     kv_cache = {}
-    
+
     with torch.no_grad():
         # 1、prefill阶段
         # output_logits: shape:[batch_size,seq_len,vocab_size]
-        # input_ids.shape: batch_size, seq_len 
+        # input_ids.shape: batch_size, seq_len
         # model(input_ids,cache=kv_cache): 走模型内部的forward方法。
         output_logits = model(input_ids,cache=kv_cache)
-        
+
         # 取最后一个token的logits
         logits = output_logits[:,-1,:]
         # 进行softmax操作，获得概率分布
@@ -533,17 +545,17 @@ def generate_text(input_ids,model:Qwen3Model,tokenizer:Qwen3Tokenizer,max_len:in
         generated_token +=1
 
         # 2、decode阶段
-        
+
         # next_input.shape: batch_size, 1
         next_input = next_token_id.unsqueeze(-1)
 
         final_output = torch.cat([final_output,next_input],dim=-1)
-        # 自回归过程中的终止条件：1、生成的token数量达到最大值 2、生成了EOS Token id 
+        # 自回归过程中的终止条件：1、生成的token数量达到最大值 2、生成了EOS Token id
         while generated_token<max_len:
             # 当前KV_Cache就不是空字典了，当前这个dict中的键，就是不同的TransformerBlock的层，值就是这一层所对应的KV Cache
             # output_logits: shape: batch_size, seq_len, vocab_size
             output_logits =  model(next_input,kv_cache)
-            
+
             logits = output_logits[:,-1,:]
             probs = torch.softmax(logits,dim=-1)
             next_token_id = torch.multinomial(probs,num_samples=1).squeeze(-1)
@@ -552,12 +564,12 @@ def generate_text(input_ids,model:Qwen3Model,tokenizer:Qwen3Tokenizer,max_len:in
 
             final_output = torch.cat([final_output,next_input],dim=-1)
 
-            generated_token += 1 
+            generated_token += 1
 
-    
+
     res_list = final_output[0].tolist()
     print(res_list)
-    
+
     res = tokenizer.decode(res_list)
     print(res)
     return res
@@ -574,7 +586,7 @@ def main():
     model.to("cuda")
     input_ids = torch.tensor(tokenizer.encode("你好，今天天气真好啊")).unsqueeze(0).to("cuda")
     output = generate_text(input_ids,model,tokenizer)
-    
+
     print(output)
 
 if __name__ == "__main__":
