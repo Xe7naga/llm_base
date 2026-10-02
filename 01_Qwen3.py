@@ -180,6 +180,7 @@ class GroupedQueryAttention(nn.Module):
         self.head_dim = head_dim
         self.d_out = num_heads * head_dim
 
+
         # q_proj层参数为全量的：d_in输入，d_out输出
         # 一个token向量，d_in=1024，经过q_proj运算之后，得到的向量维度：d_out
         # Qwen3-0.6B中：d_out = num_attention_heads * head_dim = 16 * 128 = 2048
