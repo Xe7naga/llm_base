@@ -349,7 +349,7 @@ def compute_rope_params(head_dim, theta_base=10_000, context_length=4096, dtype=
 
 def apply_rope(x, cos, sin, offset=0):
     """
-    使用计算好的cos和sin来计算旋转位置编码之后的x，注意，此处获取分组向量不是使用紧挨着的两个值构造而成的，
+    使用计算好的cos和sin来计算旋转位置编码之后的x，注意，此处获取分组向量不是使用紧挨着的两个值构造而成的， 这样的好处是新方案无需乘一个旋转矩阵就可以得到结果
     如果 head_dim = 8，此处的配对关系就是：
                     (0, 4)
                     (1, 5)
@@ -399,6 +399,78 @@ def apply_rope(x, cos, sin, offset=0):
             [x0, x4] * 旋转矩阵
 
         其他分量同理。
+
+    把每个 token 的向量拆成若干对数字，每一对按照这个 token 的位置旋转一个角度。cos、sin 已经提前算好，这个函数负责把旋转真正作用到 x 上。
+    我们先只看一个 token、一个注意力头的向量，理解后再看四维张量。
+    假设它只有 4 维：
+    x = [a, b, c, d]
+    这里的配对方式是：
+    第 1 对：(a, c)
+    第 2 对：(b, d)
+    也就是前半部分和后半部分，对应位置组成一对。配对发生在同一个 token 的向量内部，不是在不同 token 之间配对。
+    先看切分代码：
+    x1 = x[..., : head_dim // 2]
+    x2 = x[..., head_dim // 2:]
+    ... 表示前面的维度全部保留，只切最后一个维度。
+    对于这个 4 维向量，结果就是：
+    x1 = [a, b]    # 前半部分
+    x2 = [c, d]    # 后半部分
+    接下来：
+    rotated = torch.cat((-x2, x1), dim=-1)
+    torch.cat 是拼接，dim=-1 表示沿最后一个维度拼接：
+    -x2     = [-c, -d]
+    x1     = [ a,  b]
+
+    rotated = [-c, -d, a, b]
+    这一步只是准备了一个辅助向量，还没有完成目标角度的旋转。
+    为什么准备这个向量？因为二维旋转的公式是：
+    \[
+    (u,v)\ \longrightarrow\
+    (u\cos\theta-v\sin\theta,\quad u\sin\theta+v\cos\theta)
+    \]
+    它也可以写成：
+    \[
+    \boxed{(u,v)\cos\theta+(-v,u)\sin\theta}
+    \]
+    注意其中的 (-v, u)。上面的 rotated，就是一次性给所有配对准备好这个形式。
+    现在来看最关键的一行：
+    x_rotated = x * cos + rotated * sin
+    这里的 * 是对应元素相乘，不是矩阵乘法，也不是点积。
+    假设：
+    - 第一对 (a, c) 要旋转角度 α。
+    - 第二对 (b, d) 要旋转角度 β。
+    那么当前 token 使用的表必须按下面的方式排列：
+    cos = [cosα, cosβ, cosα, cosβ]
+    sin = [sinα, sinβ, sinα, sinβ]
+    **为什么重复一次？因为同一对里的两个分量，必须使用同一个角度。**例如 a 和 c 在第 0、2 个位置，因此这两个位置都放 cosα、sinα。Qwen3 的实现也采用这种前后重复的布局。实现源码
+    把计算展开：
+    x * cos：
+    [a·cosα,  b·cosβ,  c·cosα,  d·cosβ]
+
+    rotated * sin：
+    [-c·sinα, -d·sinβ, a·sinα, b·sinβ]
+    对应位置相加：
+    输出：
+    [
+        a·cosα - c·sinα,
+        b·cosβ - d·sinβ,
+        c·cosα + a·sinα,
+        d·cosβ + b·sinβ
+    ]
+    这里都是按位置乘法 所以就可以这么搞
+    重新按配对关系看：
+    \[
+    \begin{aligned}
+    a'&=a\cos\alpha-c\sin\alpha\\
+    c'&=a\sin\alpha+c\cos\alpha
+    \end{aligned}
+    \qquad
+    \begin{aligned}
+    b'&=b\cos\beta-d\sin\beta\\
+    d'&=b\sin\beta+d\cos\beta
+    \end{aligned}
+    \]
+    这就分别完成了两次二维旋转。输出仍按原来的坐标位置排列为 [a', b', c', d']。
     """
     # x: (batch_size, num_heads, seq_len, head_dim)
     batch_size, num_heads, seq_len, head_dim = x.shape
