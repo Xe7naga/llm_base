@@ -515,7 +515,9 @@ class RMSNorm(nn.Module):
         super().__init__()
         self.eps = eps
         self.qwen3_compatible = qwen3_compatible
+        # compatible adj 兼容的
         self.scale = nn.Parameter(torch.ones(emb_dim))
+        # scale就是那个要作哈达玛积的(可学习参数) -- 缩放因子 这就是为什么要多个RMSNorm 因为不同地方使用的norm的γ不同
 
     def forward(self, x):
         input_dtype = x.dtype
@@ -523,6 +525,7 @@ class RMSNorm(nn.Module):
             x = x.to(torch.float32)
         variance = x.pow(2).mean(dim=-1, keepdim=True)
         norm_x = x * torch.rsqrt(variance + self.eps)
+        # r：reciprocal n 倒数
         norm_x = norm_x * self.scale
         return norm_x.to(input_dtype)
 
