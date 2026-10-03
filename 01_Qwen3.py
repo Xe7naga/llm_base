@@ -56,6 +56,17 @@ class Qwen3Model(nn.Module):
         )
         # nn.Module所提供的方法，将数值注册到缓存中，
         # 使用方式：self.cos，self.sin
+        """
+        这里的 buffer 可以理解为：模型需要保存和使用，但不作为模型参数来学习的张量。它们在计算注意力时会用到，但通常不需要通过训练来学习，所以适合注册成 buffer。
+        注册后，就可以通过 self.cos 访问它；sin 同理。
+
+        接写 self.cos = cos 不行吗？
+        可以保存这个张量，但对于普通 Tensor，PyTorch 不会自动把它当作模块需要管理的状态。最直观的区别是移动到 GPU：
+        model.to("cuda")
+        - 普通赋值 self.cos = cos：这个普通 Tensor 不会随模型自动迁移。
+        - 使用 register_buffer：self.cos 会随模型一起迁移到 GPU。
+        这样计算时，模型参数和正余弦表就能处于同一个设备上。
+        """
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
         self.cfg = cfg
